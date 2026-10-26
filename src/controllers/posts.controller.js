@@ -1,4 +1,5 @@
 const postsService = require("../services/posts.service");
+const { pagination, meta } = require("../utils/pagination");
 
 function validId(value) {
   if (!/^[1-9]\d*$/.test(String(value))) return null;
@@ -11,141 +12,117 @@ function error500(res, error) {
   return res.status(500).json({ error: "Internal server error" });
 }
 
-function parsePagination(query) {
-  const pageText = query.page ?? "1";
-  const limitText = query.limit ?? "10";
-
-  if (
-    !/^[1-9]\d*$/.test(String(pageText)) ||
-    !/^[1-9]\d*$/.test(String(limitText))
-  ) {
-    return { error: "page and limit must be positive integers" };
-  }
-
-  const page = Number(pageText);
-  const limit = Math.min(Number(limitText), 50);
-
-  if (
-    !Number.isSafeInteger(page) ||
-    !Number.isSafeInteger(limit) ||
-    page < 1 ||
-    limit < 1 ||
-    !Number.isSafeInteger((page - 1) * limit)
-  ) {
-    return { error: "page and limit must be positive integers" };
-  }
-
-  return { page, limit, skip: (page - 1) * limit };
+function isValidDate(value) {
+  return typeof value === "string" && value.length > 0 &&
+    !Number.isNaN(Date.parse(value));
 }
 
-function parseSorting(query) {
-  const sortBy = query.sortBy ?? "createdAt";
-  const order = query.order ?? "desc";
-
-  const allowedSortBy = ["createdAt", "updatedAt"];
-  const allowedOrder = ["asc", "desc"];
-
-  if (!allowedSortBy.includes(sortBy)) {
-    return { error: "sortBy must be one of: createdAt, updatedAt" };
-  }
-  if (!allowedOrder.includes(order)) {
-    return { error: "order must be asc or desc" };
-  }
-
-  return { sortBy, order };
-}
-
-function parseFilters(query) {
-  const where = {};
-
-  if (query.location !== undefined) {
-    where.location = {
-      equals: query.location,
-      mode: "insensitive",
-    };
-  }
-
-  if (query.search) {
-    where.caption = {
-      contains: query.search,
-      mode: "insensitive",
-    };
-  }
-
-  if (query.from !== undefined || query.to !== undefined) {
-    const fromDate = query.from ? new Date(query.from) : null;
-    const toDate = query.to ? new Date(query.to) : null;
-
-    if (
-      (query.from !== undefined && Number.isNaN(fromDate.getTime())) ||
-      (query.to !== undefined && Number.isNaN(toDate.getTime()))
-    ) {
-      return { error: "from and to must be valid dates" };
-    }
-
-    where.createdAt = {};
-
-    if (fromDate !== null) {
-      where.createdAt.gte = fromDate;
-    }
-    if (toDate !== null) {
-      where.createdAt.lt = toDate;
-    }
-  }
-
-  return { where };
-}
-
-function buildMeta(page, limit, total) {
-  return {
-    page,
-    limit,
-    total,
-    totalPages: total === 0 ? 0 : Math.ceil(total / limit),
-  };
+function sendPage(res, p, [data, total]) {
+  return res.status(200).json({
+    data,
+    meta: meta(p.page, p.limit, total),
+  });
 }
 
 async function create(req, res) {
-  const { imageUrl, caption, location } = req.body ?? {};
+  const { imageUrl, authorId, caption, location } = req.body ?? {};
 
-  if (!imageUrl) {
-    return res.status(400).json({ error: "imageUrl is required" });
+  if (
+    imageUrl === undefined ||
+    imageUrl === null ||
+    imageUrl === "" ||
+    authorId === undefined ||
+    authorId === null
+  ) {
+    return res.status(400).json({
+      error: "imageUrl and authorId are required",
+    });
+  }
+
+  if (!Number.isSafeInteger(authorId) || authorId < 1) {
+    return res.status(404).json({ error: "User not found" });
   }
 
   try {
     const post = await postsService.createPost({
       imageUrl,
+      authorId,
       ...(caption !== undefined ? { caption } : {}),
       ...(location !== undefined ? { location } : {}),
     });
     return res.status(201).json(post);
   } catch (error) {
+    if (error.code === "P2003") {
+      return res.status(404).json({ error: "User not found" });
+    }
     return error500(res, error);
   }
 }
 
 async function list(req, res) {
-  const pagination = parsePagination(req.query);
-  if (pagination.error) return res.status(400).json({ error: pagination.error });
+  const p = pagination(req.query);
+  if (p.error) return res.status(400).json({ error: p.error });
 
-  const sorting = parseSorting(req.query);
-  if (sorting.error) return res.status(400).json({ error: sorting.error });
+  const sortBy = req.query.sortBy ?? "createdAt";
+  const order = req.query.order ?? "desc";
 
-  const filters = parseFilters(req.query);
-  if (filters.error) return res.status(400).json({ error: filters.error });
+  if (!["createdAt", "updatedAt", "likes"].includes(sortBy)) {
+    return res.status(400).json({
+      error: "sortBy must be one of: createdAt, updatedAt, likes",
+    });
+  }
+
+  if (!["asc", "desc"].includes(order)) {
+    return res.status(400).json({ error: "order must be asc or desc" });
+  }
+
+  const where = {};
+
+  if (req.query.location !== undefined) {
+    where.location = {
+      equals: req.query.location,
+      mode: "insensitive",
+    };
+  }
+
+  if (req.query.search) {
+    where.caption = {
+      contains: req.query.search,
+      mode: "insensitive",
+    };
+  }
+
+  if (req.query.from !== undefined || req.query.to !== undefined) {
+    if (
+      (req.query.from !== undefined && !isValidDate(req.query.from)) ||
+      (req.query.to !== undefined && !isValidDate(req.query.to))
+    ) {
+      return res.status(400).json({
+        error: "from and to must be valid dates",
+      });
+    }
+
+    where.createdAt = {};
+    if (req.query.from !== undefined) {
+      where.createdAt.gte = new Date(req.query.from);
+    }
+    if (req.query.to !== undefined) {
+      where.createdAt.lt = new Date(req.query.to);
+    }
+  }
+
+  const orderBy = sortBy === "likes"
+    ? [{ likes: { _count: order } }, { createdAt: "desc" }]
+    : { [sortBy]: order };
 
   try {
-    const [data, total] = await postsService.listPosts({
-      where: filters.where,
-      skip: pagination.skip,
-      take: pagination.limit,
-      orderBy: { [sorting.sortBy]: sorting.order },
+    const result = await postsService.listPosts({
+      where,
+      skip: p.skip,
+      take: p.limit,
+      orderBy,
     });
-
-    return res.status(200).json({
-      data,
-      meta: buildMeta(pagination.page, pagination.limit, total),
-    });
+    return sendPage(res, p, result);
   } catch (error) {
     return error500(res, error);
   }
@@ -170,7 +147,6 @@ async function update(req, res) {
 
   const body = req.body ?? {};
   const data = {};
-
   for (const field of ["caption", "location"]) {
     if (Object.hasOwn(body, field)) data[field] = body[field];
   }
@@ -201,10 +177,26 @@ async function remove(req, res) {
   }
 }
 
+async function listLikes(req, res) {
+  const postId = validId(req.params.id);
+  if (postId === null) return res.status(404).json({ error: "Post not found" });
+
+  try {
+    const post = await postsService.postExists(postId);
+    if (!post) return res.status(404).json({ error: "Post not found" });
+
+    const likes = await postsService.listPostLikes(postId);
+    return res.status(200).json(likes.map((like) => like.user));
+  } catch (error) {
+    return error500(res, error);
+  }
+}
+
 module.exports = {
   create,
   list,
   getOne,
   update,
   remove,
+  listLikes,
 };

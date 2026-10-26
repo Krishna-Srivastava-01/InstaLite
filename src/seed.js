@@ -1,115 +1,86 @@
-require("dotenv").config();
 
+require("dotenv").config();
 const { PrismaClient } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
-
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
 
 const prisma = new PrismaClient({ adapter });
+const users = [
+  { username: "riya_travels", email: "riya@example.com", fullname: "Riya Sharma", bio: "Chasing sunsets 🌅", isPrivate: false, createdAt: "2026-01-03T09:00:00.000Z" },
+  { username: "arjun_clicks", email: "arjun@example.com", fullname: "Arjun Mehta", bio: "Street photographer 📸", isPrivate: false, createdAt: "2026-01-07T10:30:00.000Z" },
+  { username: "meera.eats", email: "meera@example.com", fullname: "Meera Iyer", bio: "Food first, always", isPrivate: true, createdAt: "2026-01-12T08:15:00.000Z" },
+  { username: "kabir_sings", email: "kabir@example.com", fullname: "Kabir Khan", bio: null, isPrivate: false, createdAt: "2026-01-18T19:45:00.000Z" },
+  { username: "ananya_reads", email: "ananya@example.com", fullname: "Ananya Rao", bio: "Books & chai", isPrivate: true, createdAt: "2026-01-25T07:20:00.000Z" },
+  { username: "rohan_runs", email: "rohan@example.com", fullname: "Rohan Desai", bio: "Marathoner in training", isPrivate: false, createdAt: "2026-02-02T06:00:00.000Z" },
+  { username: "sara_sketches", email: "sara@example.com", fullname: "Sara Thomas", bio: null, isPrivate: false, createdAt: "2026-02-09T14:10:00.000Z" },
+  { username: "vikram.trek", email: "vikram@example.com", fullname: "Vikram Singh", bio: "Mountains > beaches", isPrivate: false, createdAt: "2026-02-15T11:00:00.000Z" },
+  { username: "neha_designs", email: "neha@example.com", fullname: "Neha Kapoor", bio: "UI/UX designer", isPrivate: true, createdAt: "2026-02-21T16:30:00.000Z" },
+  { username: "aditya_codes", email: "aditya@example.com", fullname: "Aditya Verma", bio: "I write bugs for a living", isPrivate: false, createdAt: "2026-03-01T22:05:00.000Z" },
+  { username: "isha_dances", email: "isha@example.com", fullname: "Isha Patel", bio: null, isPrivate: false, createdAt: "2026-03-08T12:40:00.000Z" },
+  { username: "dev_shoots", email: "dev@example.com", fullname: "Dev Malhotra", bio: "Wildlife photography", isPrivate: true, createdAt: "2026-03-15T05:55:00.000Z" },
+];
+
+const posts = [
+  { imageUrl: "https://picsum.photos/seed/insta01/600/600", caption: "Sunset at Baga beach 🌅", location: "Goa", createdAt: "2026-02-01T18:30:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta02/600/600", caption: "Cutting chai at the station", location: "Mumbai", createdAt: "2026-02-04T08:10:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta03/600/600", caption: "Snow everywhere ❄️", location: "Manali", createdAt: "2026-02-08T10:00:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta04/600/600", caption: "Pink city vibes", location: "Jaipur", createdAt: "2026-02-12T13:25:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta05/600/600", caption: null, location: "Pune", createdAt: "2026-02-15T07:45:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta06/600/600", caption: "Marine Drive at night", location: "Mumbai", createdAt: "2026-02-19T21:00:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta07/600/600", caption: "Morning run done ✅", location: null, createdAt: "2026-02-23T06:30:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta08/600/600", caption: "Lake Pichola sunset", location: "Udaipur", createdAt: "2026-02-27T17:50:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta09/600/600", caption: "Shaniwar Wada on a Sunday", location: "Pune", createdAt: "2026-03-03T11:15:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta10/600/600", caption: "Fish thali > everything", location: "Goa", createdAt: "2026-03-07T13:40:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta11/600/600", caption: "Trek to Hampta Pass begins", location: "Manali", createdAt: "2026-03-11T05:20:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta12/600/600", caption: "New sketchbook, who dis", location: null, createdAt: "2026-03-15T15:05:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta13/600/600", caption: "Hawa Mahal at sunrise", location: "Jaipur", createdAt: "2026-03-19T06:10:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta14/600/600", caption: "Vada pav hunt 🍔", location: "Mumbai", createdAt: "2026-03-23T19:30:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta15/600/600", caption: "Rainy day + chai + book", location: "Pune", createdAt: "2026-03-27T16:20:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta16/600/600", caption: "Old Goa churches", location: "goa", createdAt: "2026-03-31T10:50:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta17/600/600", caption: "Solang valley paragliding 🪂", location: "Manali", createdAt: "2026-04-04T12:00:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta18/600/600", caption: null, location: null, createdAt: "2026-04-08T09:35:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta19/600/600", caption: "City Palace details", location: "Udaipur", createdAt: "2026-04-12T14:45:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta20/600/600", caption: "Sunset from Sinhagad fort", location: "Pune", createdAt: "2026-04-16T18:15:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta21/600/600", caption: "Gateway of India, finally", location: "Mumbai", createdAt: "2026-04-20T08:55:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta22/600/600", caption: "Dance practice behind the scenes", location: null, createdAt: "2026-04-24T20:25:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta23/600/600", caption: "Palolem beach mornings", location: "Goa", createdAt: "2026-04-28T07:05:00.000Z" },
+  { imageUrl: "https://picsum.photos/seed/insta24/600/600", caption: "Tiger spotted at Tadoba 🐅", location: "Chandrapur", createdAt: "2026-05-02T06:40:00.000Z" },
+];
 
 async function main() {
-  const usersData = [
-    {
-      username: "sarthak",
-      email: "sarthak@example.com",
-      fullname: "Sarthak Jaiswal",
-      bio: "Building cool things",
-    },
-    {
-      username: "rahul",
-      email: "rahul@example.com",
-      fullname: "Rahul Sharma",
-      bio: "Photography enthusiast",
-    },
-    {
-      username: "priya",
-      email: "priya@example.com",
-      fullname: "Priya Verma",
-      bio: "Travel and lifestyle",
-    },
-  ];
+  await prisma.post.deleteMany();
+  await prisma.user.deleteMany();
 
-  const users = [];
+  const userResult = await prisma.user.createMany({
+    data: users.map((user) => ({
+      ...user,
+      createdAt: new Date(user.createdAt),
+    })),
+  });
 
-  for (const userData of usersData) {
-    const user = await prisma.user.upsert({
-      where: { username: userData.username },
-      update: userData,
-      create: userData,
-    });
+  const createdUsers = await prisma.user.findMany({
+    select: { id: true },
+    orderBy: { id: "asc" },
+  });
 
-    users.push(user);
-  }
+  const postResult = await prisma.post.createMany({
+    data: posts.map((post, index) => ({
+      ...post,
+      createdAt: new Date(post.createdAt),
+      authorId: createdUsers[index % createdUsers.length].id,
+    })),
+  });
 
-  const postsData = [
-    {
-      imageUrl: "https://picsum.photos/id/1011/600/400",
-      caption: "Mountain vibes",
-      location: "Manali",
-      authorId: users[0].id,
-    },
-    {
-      imageUrl: "https://picsum.photos/id/1015/600/400",
-      caption: "Nature is beautiful",
-      location: "Goa",
-      authorId: users[0].id,
-    },
-    {
-      imageUrl: "https://picsum.photos/id/1025/600/400",
-      caption: "A perfect day",
-      location: "Mumbai",
-      authorId: users[1].id,
-    },
-    {
-      imageUrl: "https://picsum.photos/id/1039/600/400",
-      caption: "Exploring new places",
-      location: "Goa",
-      authorId: users[2].id,
-    },
-  ];
-
-  const posts = [];
-
-  for (const postData of postsData) {
-    const post = await prisma.post.create({
-      data: postData,
-    });
-
-    posts.push(post);
-  }
-
-  const likesData = [
-    { userId: users[1].id, postId: posts[0].id },
-    { userId: users[2].id, postId: posts[0].id },
-    { userId: users[0].id, postId: posts[2].id },
-    { userId: users[0].id, postId: posts[3].id },
-    { userId: users[1].id, postId: posts[3].id },
-  ];
-
-  for (const likeData of likesData) {
-    await prisma.like.upsert({
-      where: {
-        userId_postId: {
-          userId: likeData.userId,
-          postId: likeData.postId,
-        },
-      },
-      update: {},
-      create: likeData,
-    });
-  }
-
-  console.log("Seed completed successfully!");
-  console.log(`Users: ${users.length}`);
-  console.log(`New posts created: ${posts.length}`);
-  console.log(`Likes ensured: ${likesData.length}`);
+  console.log(
+    `🌱 Seeded ${userResult.count} users and ${postResult.count} posts`
+  );
 }
 
 main()
   .catch((error) => {
-    console.error("Seeding failed:", error);
+    console.error(error);
     process.exitCode = 1;
   })
   .finally(async () => {
